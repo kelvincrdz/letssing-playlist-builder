@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LetsSing Playlist Builder</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>LetsSing Playlist Builder</h1>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="busca">Buscar</button>
+    <button role="tab" data-tab="playlist">Playlist <span id="count" class="pill">0</span></button>
+    <button role="tab" data-tab="gerar">Gerar DLC</button>
+    <button role="tab" data-tab="config">Configurações <span id="cfg-alert" class="dot" hidden></span></button>
+  </nav>
+</header>
+
+<main>
+  <!-- BUSCA -->
+  <section id="tab-busca" class="panel" hidden>
+    <div class="card">
+      <h2>Buscar músicas</h2>
+      <form id="search-form" class="row">
+        <input id="search-q" type="search" placeholder="Artista e/ou título — ex.: Legião Urbana Tempo Perdido" required>
+        <button class="primary">Buscar</button>
+      </form>
+      <p class="muted">Fontes: USDB (precisa de login em Configurações) e YouTube. Prefira resultados do USDB: já trazem o .txt feito por pessoas e os links de mídia. Sem .txt, ele é gerado na hora de gerar o DLC.</p>
+      <p id="search-msg" class="msg" role="status"></p>
+      <div id="search-results"></div>
+    </div>
+
+    <div class="card" id="sp-card">
+      <div class="row spread"><h2>Do meu Spotify</h2>
+        <div class="row"><button type="button" id="sp-connect" class="primary" hidden>Conectar Spotify</button>
+          <button type="button" id="sp-disconnect" class="link" hidden>Desconectar</button></div></div>
+      <p class="muted"><span id="sp-state">…</span> Do Spotify vêm só artista, título e duração; o áudio é baixado do
+        YouTube (o vídeo com a mesma duração da faixa, quando houver).</p>
+      <div id="sp-pick" class="row" hidden>
+        <select id="sp-list" aria-label="Playlist do Spotify"></select>
+        <button type="button" id="sp-load">Mostrar músicas</button>
+      </div>
+      <p id="sp-copy-hint" class="muted" hidden>Playlists de outras pessoas e do próprio Spotify (ex.: "Top 50", "Daylist")
+        não podem ser lidas por apps em modo de desenvolvimento. Para usar uma delas, copie as músicas para uma playlist sua:
+        no Spotify do computador, abra a playlist, clique numa música e aperte <kbd>Ctrl</kbd>+<kbd>A</kbd>, depois clique com o
+        botão direito → <em>Adicionar à playlist</em> → <em>Nova playlist</em>. Ela aparece aqui depois de recarregar a página.</p>
+      <p id="sp-msg" class="msg" role="status"></p>
+      <div id="sp-picker" class="picker" hidden></div>
+      <p class="muted small">Endereço de retorno para cadastrar no app do Spotify: <code id="sp-redirect"></code></p>
+    </div>
+
+    <div class="card">
+      <h2>Importar playlist do YouTube</h2>
+      <div class="row yt-my">
+        <button type="button" id="yt-my-load">Minhas playlists do YouTube</button>
+        <select id="yt-my-list" aria-label="Minhas playlists do YouTube" hidden></select>
+        <button type="button" id="yt-my-show" class="primary" hidden>Mostrar músicas</button>
+      </div>
+      <p class="muted small">Suas playlists (inclusive privadas), Vídeos curtidos e Assistir mais tarde precisam do
+        login do YouTube em Configurações. Ou cole o link de uma playlist pública/não listada:</p>
+      <form id="yt-pl-form" class="row">
+        <input id="yt-pl-url" type="url" placeholder="https://www.youtube.com/playlist?list=…" required>
+        <button class="primary">Carregar playlist</button>
+      </form>
+      <p class="muted">Cole o link de uma playlist (ou de um vídeo aberto dentro dela). Até 200 músicas; artista e título
+        vêm do nome do vídeo, então confira antes de adicionar. Elas não têm .txt: ele é gerado e fica marcado para revisão.</p>
+      <p id="yt-pl-msg" class="msg" role="status"></p>
+      <div id="yt-pl-picker" class="picker" hidden></div>
+    </div>
+
+    <div class="card">
+      <h2>Importar do UltraStar-ES</h2>
+      <p class="muted">O <a href="https://ultrastar-es.org" target="_blank" rel="noopener">ultrastar-es.org</a> bloqueia acesso automático.
+        Baixe a música pelo navegador e envie o <code>.txt</code> ou <code>.zip</code> aqui: artista e título vêm do próprio .txt.
+        Mídia que vier no .zip é usada; o que faltar vem do YouTube.</p>
+      <div class="row">
+        <label class="btn">Escolher .txt / .zip<input id="import-new" type="file" accept=".txt,.zip" hidden></label>
+        <span id="import-msg" class="msg" role="status"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Adicionar manualmente</h2>
+      <form id="add-form" class="grid">
+        <label>Artista<input name="artist" required maxlength="200"></label>
+        <label>Título<input name="title" required maxlength="200"></label>
+        <label>Idioma<input name="language" placeholder="pt, en…"></label>
+        <label>Link do áudio (YouTube)<input name="audio_url" type="url" placeholder="https://www.youtube.com/watch?v=…"></label>
+        <label>Link do vídeo (opcional)<input name="video_url" type="url"></label>
+        <label class="check"><input name="no_video" type="checkbox"> Sem vídeo (usar capa)</label>
+        <div class="span2 row">
+          <button type="submit" class="primary">Adicionar à playlist</button>
+          <span id="add-msg" class="msg" role="status"></span>
+        </div>
+      </form>
+      <p class="muted">Sem .txt UltraStar, ele é gerado: letra e tempo das legendas do YouTube (quando o vídeo tem),
+        notas pelo UltraSinger (IA). A música fica marcada para revisão.</p>
+    </div>
+  </section>
+
+  <!-- PLAYLIST -->
+  <section id="tab-playlist" class="panel" hidden>
+    <div class="card">
+      <div class="row spread">
+        <h2>Minha playlist</h2>
+        <div class="row">
+          <a class="btn" href="/api/playlist/export" download>Exportar JSON</a>
+          <label class="btn">Importar JSON<input id="import-file" type="file" accept="application/json,.json" hidden></label>
+        </div>
+      </div>
+      <p id="pl-msg" class="msg" role="status"></p>
+      <div class="pick-bar" id="pl-bar">
+        <input type="search" id="pl-filter" placeholder="Filtrar por artista ou título" aria-label="Filtrar playlist">
+        <select id="pl-status" aria-label="Filtrar por status">
+          <option value="">Todos os status</option>
+          <option value="pendente">Pendentes</option>
+          <option value="pronto">Prontas</option>
+          <option value="review">Para revisar</option>
+          <option value="erro">Com erro</option>
+          <option value="notxt">Sem .txt (serão geradas)</option>
+        </select>
+        <span id="pl-selcount" class="muted"></span>
+        <button type="button" id="pl-selall">Selecionar todas</button>
+        <span id="pl-bulk" class="row" hidden>
+          <button type="button" id="pl-bulk-usdb" class="primary" title="Troca o .txt gerado pelo do USDB quando a música existe lá">Procurar no USDB</button>
+          <button type="button" id="pl-bulk-novideo">Marcar sem vídeo</button>
+          <button type="button" id="pl-bulk-video">Marcar com vídeo</button>
+          <button type="button" id="pl-bulk-remove" class="danger">Remover</button>
+          <button type="button" id="pl-selnone">Limpar seleção</button>
+        </span>
+      </div>
+      <p class="muted pick-hint">Clique numa linha para selecionar; Shift+clique seleciona um intervalo.</p>
+      <div class="table-wrap">
+        <table id="pl-table">
+          <thead>
+            <tr><th class="selcol" aria-label="Seleção"></th><th>Música</th><th>.txt</th><th>Status</th><th title="Sobrescreve o #GAP do .txt (ms)">#GAP (ms)</th><th class="center">Sem vídeo</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p id="pl-empty" class="muted" hidden>Playlist vazia. Use a aba Buscar para adicionar músicas.</p>
+    </div>
+  </section>
+
+  <!-- GERAR -->
+  <section id="tab-gerar" class="panel" hidden>
+    <div class="card">
+      <div class="row spread">
+        <h2>Gerar DLC</h2>
+        <div class="row">
+          <button id="gen-cancel" hidden>Cancelar</button>
+          <button id="gen-start" class="primary">Gerar DLC</button>
+        </div>
+      </div>
+      <p class="muted">Para cada música: .txt (USDB, importado ou gerado) → mídia (YouTube) → .txt normalizado. Depois, as prontas vão
+        para o <strong>ultrastar2singIt</strong> e o resultado vira um .zip. O que já foi baixado ou convertido não é refeito.
+        Músicas sem .txt são geradas: letra e tempo das <strong>legendas do YouTube</strong> ou, sem elas, da
+        <strong>letra sincronizada do LRCLIB</strong>, e as notas pelo UltraSinger; sem nenhuma das duas, pelo
+        <strong>UltraSinger</strong> completo (bem mais lento na CPU). Ficam marcadas com
+        <span class="badge review">revisar</span>. Sem o UltraSinger configurado, elas são puladas.</p>
+      <div id="gen-overall" hidden>
+        <div class="row spread"><span id="gen-state"></span><span id="gen-count"></span></div>
+        <progress id="gen-bar" max="1" value="0"></progress>
+      </div>
+      <p id="gen-msg" class="msg" role="status"></p>
+      <div class="table-wrap">
+        <table id="gen-table" hidden>
+          <thead><tr><th>Música</th><th>Etapa</th><th>Progresso</th><th>Status</th><th>Pasta</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" id="dlc-card" hidden>
+      <h2>Pacote para o Switch</h2>
+      <p><a id="dlc-link" class="btn primary-link" href="/api/jobs/dlc/latest.zip" download>Baixar .zip</a>
+        <span id="dlc-meta" class="muted"></span></p>
+      <ol class="steps">
+        <li>Desligue o Switch e coloque o cartão SD no PC.</li>
+        <li>Descompacte o .zip na <strong>raiz</strong> do SD — ele cria/atualiza <code>atmosphere/contents/&lt;TitleID do DLC&gt;/romfs/</code>.</li>
+        <li>O DLC configurado precisa estar instalado no console. Ligue no Atmosphere e abra o Let's Sing.</li>
+      </ol>
+      <p class="muted">Cada pacote substitui o anterior: ele contém todas as músicas convertidas neste lote (as que ficaram de fora deixam de aparecer no jogo).</p>
+    </div>
+    <div class="card">
+      <div class="row spread"><h2>Log</h2>
+        <label class="check"><input id="log-verbose" type="checkbox"> mostrar saída do conversor</label></div>
+      <pre id="gen-log" class="log"></pre>
+    </div>
+  </section>
+
+  <!-- CONFIG -->
+  <section id="tab-config" class="panel" hidden>
+    <form id="cfg-form">
+      <div class="card">
+        <h2>Jogo e DLC</h2>
+        <p class="muted">Leia no console com o DBI: <code>[TITLEID DO DLC]/romfs/name.txt</code> traz o DLC JSON Name. Não chute valores.</p>
+        <div class="grid">
+          <label>Versão do jogo
+            <select name="game_version">
+              <option>2026</option><option>2025</option><option>2024</option>
+            </select>
+          </label>
+          <label>Sugestões do conversor
+            <select id="dlc-suggest"><option value="">— escolher para preencher —</option></select>
+          </label>
+          <label>TitleID do jogo<input name="core_title_id" maxlength="16" placeholder="16 caracteres hex" class="mono"></label>
+          <label>TitleID do DLC<input name="dlc_title_id" maxlength="16" placeholder="16 caracteres hex" class="mono"></label>
+          <label>DLC JSON Name<input name="dlc_json_name" placeholder="ex.: songs_int" class="mono"></label>
+        </div>
+        <ul id="cfg-warnings" class="warnings"></ul>
+      </div>
+
+      <div class="card">
+        <h2>Ferramentas</h2>
+        <div class="grid">
+          <label>FFmpeg (ffmpeg.exe)<input name="ffmpeg_path" placeholder="vazio = usar o do PATH"><small data-tool="ffmpeg"></small></label>
+          <label>RAD Video Tools (radvideo64.exe)<input name="rad_path"><small data-tool="rad"></small></label>
+          <label>ultrastar2singIt (.exe ou pasta do código)<input name="converter_path"><small data-tool="converter"></small></label>
+          <label>UltraSinger (pasta do repositório)<input name="ultrasinger_dir"><small data-tool="ultrasinger_dir"></small></label>
+          <label>UltraSinger (python.exe do ambiente)<input name="ultrasinger_python" placeholder="vazio = .venv da pasta do UltraSinger"><small data-tool="ultrasinger_python"></small></label>
+          <label>UltraSinger: modelo do Whisper
+            <select name="ultrasinger_whisper_model">
+              <option value="tiny">tiny (mais rápido, erra mais)</option>
+              <option value="base">base</option>
+              <option value="small">small (recomendado sem GPU)</option>
+              <option value="medium">medium (lento na CPU)</option>
+              <option value="large-v1">large-v1</option>
+              <option value="large-v2">large-v2 (padrão do UltraSinger; muito lento na CPU)</option>
+              <option value="large-v3">large-v3</option>
+            </select>
+            <small>Usado só quando o vídeo não tem legendas. Modelos maiores acertam mais a letra, mas demoram muito mais sem GPU.</small></label>
+          <label class="check wide"><input type="checkbox" name="ultrasinger_use_gpu">
+            <span>Usar GPU NVIDIA no UltraSinger
+              <small>Só em PC com placa NVIDIA e o UltraSinger instalado com <code>install\CUDA\windows_cuda_gpu.bat</code>.
+                A separação de voz cai de minutos para segundos. Desligado = <code>--force_cpu</code>.</small></span></label>
+          <label class="check wide"><input type="checkbox" name="use_lrclib">
+            <span>Sem legendas, usar a letra sincronizada do LRCLIB
+              <small>lrclib.net, grátis e aberto: tempo por linha (as palavras são estimadas); o UltraSinger só calcula as notas.</small></span></label>
+          <label class="check wide"><input type="checkbox" name="use_youtube_captions">
+            <span>Usar as legendas do YouTube para a letra e o tempo
+              <small>Mais rápido e com a letra do vídeo; o UltraSinger só calcula as notas (re-pitch).</small></span></label>
+          <label>Pasta de trabalho (workspace)<input name="workspace_dir"></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Mídia</h2>
+        <div class="grid">
+          <label>Altura máxima do vídeo
+            <select name="video_max_height"><option value="480">480p</option><option value="720">720p</option><option value="1080">1080p</option></select>
+          </label>
+          <label class="check"><input name="cover_only" type="checkbox"> Só capa, sem vídeo (mais rápido e leve)</label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Login do YouTube (suas playlists)</h2>
+        <div class="grid">
+          <label>Usar a sessão do navegador
+            <select name="youtube_cookies_browser">
+              <option value="">— não usar —</option>
+              <option value="firefox">Firefox</option>
+              <option value="chrome">Chrome</option>
+              <option value="edge">Edge</option>
+              <option value="brave">Brave</option>
+              <option value="opera">Opera</option>
+              <option value="vivaldi">Vivaldi</option>
+              <option value="chromium">Chromium</option>
+            </select></label>
+          <label>Ou arquivo cookies.txt<input name="youtube_cookies_file" placeholder="ex.: C:\Users\voce\youtube-cookies.txt"></label>
+        </div>
+        <p class="muted">Serve só para listar e ler suas playlists; os downloads continuam sem login. A app usa apenas os
+          cookies de youtube.com e nunca altera o arquivo. Se os dois estiverem preenchidos, vale o cookies.txt.</p>
+        <p class="muted"><strong>Chrome e Edge</strong> atuais criptografam os cookies de um jeito que o yt-dlp não consegue ler
+          (e travam o arquivo enquanto estão abertos). Nesse caso use um <strong>cookies.txt</strong>: instale uma extensão como
+          "Get cookies.txt LOCALLY", abra uma <em>janela anônima</em>, entre no youtube.com, exporte os cookies desse site e
+          feche a janela anônima (assim o YouTube não troca a sessão). O arquivo dá acesso à sua conta: guarde-o só nesta máquina.</p>
+      </div>
+
+      <div class="card">
+        <h2>Spotify</h2>
+        <div class="grid">
+          <label>Client ID<input name="spotify_client_id" class="mono" placeholder="do developer.spotify.com/dashboard"></label>
+        </div>
+        <p class="muted">O login usa PKCE: <strong>não precisa do Client secret</strong>, não cole ele aqui. No app do Spotify,
+          em Redirect URIs, cadastre <code id="sp-cfg-redirect">http://127.0.0.1:8000/api/spotify/callback</code>
+          (o Spotify não aceita "localhost"). Depois de salvar, use "Conectar Spotify" na aba Buscar.</p>
+      </div>
+
+      <div class="card">
+        <h2>USDB</h2>
+        <div class="grid">
+          <label>Usuário<input name="usdb_username" autocomplete="username"></label>
+          <label>Senha<input name="usdb_password" type="password" autocomplete="new-password" placeholder="deixe vazio para manter"></label>
+        </div>
+        <p class="muted">A senha fica no Cofre de Credenciais do Windows, nunca no arquivo nem nos logs.
+          <span id="pw-state"></span> <button type="button" id="pw-clear" class="link" hidden>Apagar senha salva</button></p>
+        <div class="row">
+          <button type="button" id="usdb-test">Testar login no USDB</button>
+          <span id="usdb-msg" class="msg" role="status"></span>
+        </div>
+        <p class="muted">Conta gratuita: <a href="https://usdb.animux.de/index.php?link=register" target="_blank" rel="noopener">criar no USDB</a>. Salve as configurações antes de testar.</p>
+      </div>
+
+      <div class="row sticky-actions">
+        <button type="submit" class="primary">Salvar configurações</button>
+        <span id="cfg-msg" class="msg" role="status"></span>
+      </div>
+    </form>
+  </section>
+</main>
+
+<dialog id="media-dialog">
+  <form method="dialog" id="media-form" class="grid1">
+    <h3>Trocar fonte de mídia</h3>
+    <p id="media-title" class="muted"></p>
+    <label>Link do áudio<input name="audio_url" type="url"></label>
+    <label>Link do vídeo<input name="video_url" type="url"></label>
+    <label>Link da capa<input name="cover_url" type="url"></label>
+    <div class="row">
+      <button value="cancel" formnovalidate>Cancelar</button>
+      <button value="ok" class="primary">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<input id="row-txt-file" type="file" accept=".txt,.zip" hidden>
+<script src="/static/app.js"></script>
+</body>
+</html>
